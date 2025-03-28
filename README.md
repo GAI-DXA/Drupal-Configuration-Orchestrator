@@ -2,6 +2,8 @@
 
 A flexible tool for managing environment-specific configuration overrides in Drupal 10+ websites. This package allows you to define configuration providers that can apply different settings based on the current environment, making it easy to manage configuration across development, staging, and production environments.
 
+> **Note**: This is a helper package, not a Drupal module. It works alongside your Drupal installation to manage environment-specific configurations.
+
 ## Requirements
 
 - PHP 8.1 or higher
@@ -17,31 +19,35 @@ The configuration system consists of three main components:
    - Handles provider registration and configuration application
    - Manages configuration export and import
 
-2. **Configuration Providers** (`src/Provider/Configuration/`)
+1. **Configuration Providers** (`src/Provider/Configuration/`)
    - Individual configuration providers for different features
    - Each provider can specify which environments it applies to
    - Supports environment-specific configuration values
 
-3. **Utility Classes** (`src/Utility/`)
+1. **Utility Classes** (`src/Utility/`)
    - Helper classes for common operations
    - Environment detection and management
    - Shared functionality
 
-## Installation
+## Implementation in Your Drupal Project
 
-1. Add the package to your Drupal project:
+### 1. Installation
 
-   ```bash
-   composer require wearegenuine/drupal-config-orchestrator
-   ```
+Add the package to your Drupal project:
 
-2. Create a directory for your configuration providers:
+```bash
+composer require wearegenuine/drupal-config-orchestrator
+```
+
+### 2. Project Structure Setup
+
+1. Create a directory for your configuration providers:
 
    ```bash
    mkdir -p config/providers
    ```
 
-3. Configure your project's composer.json to autoload your providers:
+2. Configure your project's composer.json to autoload your providers:
 
    ```json
    {
@@ -53,27 +59,55 @@ The configuration system consists of three main components:
    }
    ```
 
-4. Run composer dump-autoload:
+3. Run composer dump-autoload:
 
    ```bash
    composer dump-autoload
    ```
 
-5. Add the configuration script to your deployment process:
+### 3. Drupal Integration
 
-   ```bash
-   # For local development
-   ./vendor/bin/drupal-config-orchestrator
+1. Add the following to your `settings.php` or environment-specific settings file (e.g., `settings.local.php`):
 
-   # For CI/CD pipelines
-   ./vendor/bin/drupal-config-orchestrator --env=prod
+   ```php
+   use WeAreGenuine\DrupalEnvConfig\ConfigurationManager;
+   use YourNamespace\Config\ConfigurationService;
+
+   // Initialize the configuration manager
+   $configManager = new ConfigurationManager();
+
+   // Register your providers
+   ConfigurationService::registerProviders($configManager);
+
+   // Apply configuration overrides
+   $configManager->applyConfiguration();
    ```
+
+2. Ensure your `settings.php` has the environment setting:
+
+   ```php
+   $settings['environment'] = getenv('DRUPAL_ENV') ?: 'dev';
+   ```
+
+### 4. Configuration Script Setup
+
+Add the configuration script to your deployment process:
+
+```bash
+# For local development
+./vendor/bin/drupal-config-orchestrator
+
+# For CI/CD pipelines
+./vendor/bin/drupal-config-orchestrator --env=prod
+```
 
 ## Usage
 
-### Creating Configuration Providers
+## Creating Your Configuration Providers
 
-1. Create a new provider class that extends `AbstractConfigurationProvider`:
+### Basic Provider Implementation
+
+Create configuration providers in your `config/providers` directory. Each provider should handle a specific configuration concern (e.g., database, cache, mail settings).
 
    ```php
    namespace YourNamespace\Config\Provider;
@@ -103,7 +137,7 @@ The configuration system consists of three main components:
    }
    ```
 
-2. Register your providers:
+1. Register your providers:
 
    ```php
    // In config/providers/ConfigurationService.php
@@ -120,15 +154,42 @@ The configuration system consists of three main components:
    }
    ```
 
+## Environment Management
+
 ### Environment Detection
 
-The package supports multiple ways to detect the current environment:
+The package determines the current environment in the following order of precedence:
 
 1. Command line argument: `--env=prod`
-2. Environment variable: `DRUPAL_ENV`
-3. Drupal's `SETTINGS` array: `$settings['environment']`
+1. Environment variable: `DRUPAL_ENV`
+1. Drupal's `SETTINGS` array: `$settings['environment']`
 
-Priority order: Command line > Environment variable > Settings array
+### Environment-Specific Configuration
+
+1. Define environment-specific values in your providers:
+
+   ```php
+   public function getConfigurationOverrides(string $environment): array
+   {
+       return match ($environment) {
+           'prod' => ['key' => 'production-value'],
+           'test' => ['key' => 'staging-value'],
+           default => ['key' => 'development-value'],
+       };
+   }
+   ```
+
+1. Use environment variables for sensitive data:
+
+   ```php
+   public function getDatabasePassword(string $environment): string
+   {
+       return match ($environment) {
+           'prod' => getenv('DRUPAL_DB_PASSWORD'),
+           default => 'local-password',
+       };
+   }
+   ```
 
 ### CI/CD Integration
 
