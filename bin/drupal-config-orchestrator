@@ -1,0 +1,78 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * @file
+ * Main execution script for applying configuration overrides.
+ *
+ * This script orchestrates the configuration override process by:
+ * 1. Loading the configuration management system
+ * 2. Detecting the current environment
+ * 3. Loading and registering configuration providers
+ * 4. Applying configuration updates
+ * 5. Providing execution summary and status reporting
+ *
+ * Usage: ./vendor/bin/drupal-config-orchestrator [options]
+ * Options:
+ *   --env=<environment>    Target environment (dev, test, prod)
+ *   --list-providers       List all registered configuration providers
+ *   --dry-run             Show configuration changes without applying them
+ */
+
+declare(strict_types=1);
+
+use Symfony\Component\Console\Application;
+use WeAreGenuine\DrupalConfigOrchestrator\Console\Command\ApplyConfigCommand;
+use WeAreGenuine\DrupalConfigOrchestrator\ConfigurationManager;
+use WeAreGenuine\DrupalConfigOrchestrator\Utility\EnvironmentDetector;
+
+// Set up autoloading
+$autoloadFiles = [
+    __DIR__ . '/../../../autoload.php',
+    __DIR__ . '/../vendor/autoload.php',
+];
+
+$autoloaded = false;
+foreach ($autoloadFiles as $autoloadFile) {
+    if (file_exists($autoloadFile)) {
+        require_once $autoloadFile;
+        $autoloaded = true;
+        break;
+    }
+}
+
+if (!$autoloaded) {
+    echo "Could not find autoload.php. Please run 'composer install' first.\n";
+    exit(1);
+}
+
+// Bootstrap Drupal
+$drupalRoot = getenv('DRUPAL_ROOT') ?: getcwd();
+$autoloader = require_once $drupalRoot . '/autoload.php';
+
+// Initialize Drupal
+$kernel = new \Drupal\Core\DrupalKernel('prod', $autoloader);
+$kernel->boot();
+$container = $kernel->getContainer();
+
+// Initialize services
+$configFactory = $container->get('config.factory');
+$environmentDetector = new EnvironmentDetector();
+$configManager = new ConfigurationManager($configFactory);
+
+// Load configuration providers from the project
+$providerDir = getcwd() . '/config/providers';
+if (is_dir($providerDir)) {
+    foreach (glob($providerDir . '/*Config.php') as $file) {
+        $className = 'YourNamespace\\Config\\Provider\\' . basename($file, '.php');
+        if (class_exists($className)) {
+            $configManager->addProvider(new $className());
+        }
+    }
+}
+
+// Create and run the application
+$application = new Application('Drupal Environment Config', '1.0.0');
+$application->add(new ApplyConfigCommand($configManager, $environmentDetector));
+$application->setDefaultCommand('apply-config', true);
+$application->run();

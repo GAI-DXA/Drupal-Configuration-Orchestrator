@@ -1,0 +1,9 @@
+# Composer dependencies
+/vendor/
+composer.lock
+
+# PHPUnit
+.phpunit.result.cache
+
+# Local development
+/.ddev/
