@@ -27,28 +27,30 @@ use WeAreGenuine\DrupalConfigOrchestrator\ConfigurationManager;
 use WeAreGenuine\DrupalConfigOrchestrator\Utility\EnvironmentDetector;
 
 // Set up autoloading
-$autoloadFiles = [
-    __DIR__ . '/../../../autoload.php',
+$possibleAutoloadPaths = [
+    // Local development - package itself
     __DIR__ . '/../vendor/autoload.php',
+    // When installed in a Drupal project via Composer
+    __DIR__ . '/../../../autoload.php',
+    // When running from Drupal web root
+    getcwd() . '/vendor/autoload.php',
+    // Custom Drupal root if specified
+    getenv('DRUPAL_ROOT') ? getenv('DRUPAL_ROOT') . '/vendor/autoload.php' : null,
 ];
 
 $autoloaded = false;
-foreach ($autoloadFiles as $autoloadFile) {
-    if (file_exists($autoloadFile)) {
-        require_once $autoloadFile;
+foreach ($possibleAutoloadPaths as $autoloadFile) {
+    if ($autoloadFile && file_exists($autoloadFile)) {
+        $autoloader = require_once $autoloadFile;
         $autoloaded = true;
         break;
     }
 }
 
 if (!$autoloaded) {
-    echo "Could not find autoload.php. Please run 'composer install' first.\n";
+    echo "Could not find autoload.php. Please ensure you are running this command from your Drupal project root or set DRUPAL_ROOT environment variable.\n";
     exit(1);
 }
-
-// Bootstrap Drupal
-$drupalRoot = getenv('DRUPAL_ROOT') ?: getcwd();
-$autoloader = require_once $drupalRoot . '/autoload.php';
 
 // Initialize Drupal
 $kernel = new \Drupal\Core\DrupalKernel('prod', $autoloader);
@@ -60,11 +62,14 @@ $configFactory = $container->get('config.factory');
 $environmentDetector = new EnvironmentDetector();
 $configManager = new ConfigurationManager($configFactory);
 
+// Load settings
+$settings = new \WeAreGenuine\DrupalConfigOrchestrator\Configuration\Settings();
+
 // Load configuration providers from the project
-$providerDir = getcwd() . '/config/providers';
+$providerDir = getcwd() . '/' . $settings->getProviderPath();
 if (is_dir($providerDir)) {
     foreach (glob($providerDir . '/*Config.php') as $file) {
-        $className = 'YourNamespace\\Config\\Provider\\' . basename($file, '.php');
+        $className = $settings->getProviderNamespace() . '\\' . basename($file, '.php');
         if (class_exists($className)) {
             $configManager->addProvider(new $className());
         }

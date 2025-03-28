@@ -47,7 +47,9 @@ composer require wearegenuine/drupal-config-orchestrator
    mkdir -p config/providers
    ```
 
-2. Configure your project's composer.json to autoload your providers:
+2. Configure your application's composer.json:
+
+   First, set up autoloading for your providers:
 
    ```json
    {
@@ -58,6 +60,26 @@ composer require wearegenuine/drupal-config-orchestrator
      }
    }
    ```
+
+   Optionally, you can customize the provider namespace and path in your application's composer.json:
+
+   ```json
+   {
+     "extra": {
+       "drupal-config-orchestrator": {
+         "provider-namespace": "YourNamespace\\Config\\Provider\\Configuration",
+         "provider-path": "config/providers"
+       }
+     }
+   }
+   ```
+
+   The namespace and provider path can be configured in three ways (in order of precedence):
+   1. Environment variables:
+      - `DRUPAL_CONFIG_PROVIDER_NAMESPACE`
+      - `DRUPAL_CONFIG_PROVIDER_PATH`
+   2. Your application's composer.json under `extra.drupal-config-orchestrator`
+   3. Defaults to `YourNamespace\Config\Provider\Configuration` and `config/providers` if not configured
 
 3. Run composer dump-autoload:
 
