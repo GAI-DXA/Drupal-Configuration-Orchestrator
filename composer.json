@@ -2,9 +2,11 @@
     "name": "wearegenuine/drupal-config-orchestrator",
     "description": "Environment-specific configuration management tools for Drupal websites",
     "type": "library",
+    "license": "MIT",
     "authors": [
         {
-            "name": "WeAreGenuine",
+            "name": "Chase Barrett",
+            "email": "cbarrett@wearegenuine.com",
             "homepage": "https://www.wearegenuine.com"
         }
     ],
